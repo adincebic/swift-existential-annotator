@@ -5,7 +5,7 @@ As [Swift 6](https://forums.swift.org/t/on-the-road-to-swift-6/32862) release ap
 
 ## How does Swift existentialannotator work?
 
-This is a command line tool written in Swift that utilizes [Apple's Swift Syntax library]https://github.com/apple/swift-syntax() to find all protocol declarations. Then it rewrites all
+This is a command line tool written in Swift that utilizes [Apple's Swift Syntax library](https://github.com/apple/swift-syntax) to find all protocol declarations. Then it rewrites all
  existential types such that keyword `any` is added before type annotation. It also relies on [Argument parser](https://github.com/apple/swift-argument-parser) to provide common command line functionality in addition to parsing the single argument that this tool takes.
 
 ## Usage
