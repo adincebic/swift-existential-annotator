@@ -4,12 +4,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "ExistentialAnnotator",
+    name: "existentialannotator",
     platforms: [.macOS(.v12)],
     products: [
         .executable(
-            name: "existential-annotator",
-            targets: ["ExistentialAnnotator"]),
+            name: "existentialannotator",
+            targets: ["existentialannotator"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-syntax", exact: "508.0.1"),
@@ -17,7 +17,7 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "ExistentialAnnotator",
+            name: "existentialannotator",
             dependencies: [
                 .product(name: "SwiftSyntax", package: "swift-syntax"),
                 .product(name: "SwiftSyntaxParser", package: "swift-syntax"),
@@ -25,7 +25,7 @@ let package = Package(
                 .product(name: "ArgumentParser", package: "swift-argument-parser")
             ]),
         .testTarget(
-            name: "ExistentialAnnotatorTests",
-            dependencies: ["ExistentialAnnotator"]),
+            name: "existentialannotatorTests",
+            dependencies: ["existentialannotator"]),
     ]
 )
