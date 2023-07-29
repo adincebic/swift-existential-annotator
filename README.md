@@ -8,6 +8,13 @@ As [Swift 6](https://forums.swift.org/t/on-the-road-to-swift-6/32862) release ap
 This is a command line tool written in Swift that utilizes [Apple's Swift Syntax library](https://github.com/apple/swift-syntax) to find all protocol declarations. Then it rewrites all
  existential types such that keyword `any` is added before type annotation. It also relies on [Argument parser](https://github.com/apple/swift-argument-parser) to provide common command line functionality in addition to parsing the single argument that this tool takes.
 
+## Installation
+
+You can install existentialannotator using [Homebrew](https://brew.sh).
+
+1. Open Terminal
+2. Run `brew install adincebic/brew/existentialannotator`
+
 ## Usage
 
 1. In Terminal `cd`  in to your project directory where you want to perform the annotation.
