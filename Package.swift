@@ -9,11 +9,12 @@ let package = Package(
     products: [
         .executable(
             name: "existentialannotator",
-            targets: ["existentialannotator"]),
+            targets: ["existentialannotator"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-syntax", exact: "508.0.1"),
-        .package(url: "https://github.com/apple/swift-argument-parser", exact: "1.2.2")
+        .package(url: "https://github.com/apple/swift-argument-parser", exact: "1.2.2"),
     ],
     targets: [
         .executableTarget(
@@ -22,10 +23,12 @@ let package = Package(
                 .product(name: "SwiftSyntax", package: "swift-syntax"),
                 .product(name: "SwiftSyntaxParser", package: "swift-syntax"),
                 .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
-                .product(name: "ArgumentParser", package: "swift-argument-parser")
-            ]),
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            ]
+        ),
         .testTarget(
             name: "existentialannotatorTests",
-            dependencies: ["existentialannotator"]),
+            dependencies: ["existentialannotator"]
+        ),
     ]
 )

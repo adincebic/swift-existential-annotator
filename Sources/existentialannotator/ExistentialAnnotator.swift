@@ -1,7 +1,7 @@
 import ArgumentParser
+import Foundation
 import SwiftSyntax
 import SwiftSyntaxParser
-import Foundation
 
 @main
 struct RootDirectory: ParsableCommand {

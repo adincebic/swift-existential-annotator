@@ -1,6 +1,6 @@
 import Foundation
-import SwiftSyntaxParser
 import SwiftSyntax
+import SwiftSyntaxParser
 
 final class Processor {
     private let provider: any FileProvider
