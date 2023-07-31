@@ -230,4 +230,64 @@ final class ExistentialAnnotatorTests: XCTestCase {
 
         XCTAssertEqual(annotated.description, expected)
     }
+
+    func testThatExistentialIsAnnotatedWhenItIsOptionalInFunctionParameter() throws {
+        let exampleFile = #"""
+        final class SurveyViewModel: ObservableObject {
+            weak var delegate: SurveyDelegate!
+            @Published var isLoading = false
+
+            func setDelegate(delegate: SurveyDelegate?) {
+                print(delegate)
+            }
+        }
+        """#
+        let sut = Annotator(protocols: ["SurveyUseCase", "SurveyDelegate"])
+        let parsedSource = try SyntaxParser.parse(source: exampleFile)
+
+        let annotated = sut.visit(parsedSource)
+
+        let expected = #"""
+        final class SurveyViewModel: ObservableObject {
+            weak var delegate: (any SurveyDelegate)!
+            @Published var isLoading = false
+
+            func setDelegate(delegate: (any SurveyDelegate)?) {
+                print(delegate)
+            }
+        }
+        """#
+
+        XCTAssertEqual(annotated.description, expected)
+    }
+
+    func testThatExistentialIsAnnotatedWhenItIsImplicitlyUnwrappedOptionalInFunctionParameter() throws {
+        let exampleFile = #"""
+        final class SurveyViewModel: ObservableObject {
+            weak var delegate: SurveyDelegate!
+            @Published var isLoading = false
+
+            func setDelegate(delegate: SurveyDelegate!) {
+                print(delegate)
+            }
+        }
+        """#
+        let sut = Annotator(protocols: ["SurveyUseCase", "SurveyDelegate"])
+        let parsedSource = try SyntaxParser.parse(source: exampleFile)
+
+        let annotated = sut.visit(parsedSource)
+
+        let expected = #"""
+        final class SurveyViewModel: ObservableObject {
+            weak var delegate: (any SurveyDelegate)!
+            @Published var isLoading = false
+
+            func setDelegate(delegate: (any SurveyDelegate)!) {
+                print(delegate)
+            }
+        }
+        """#
+
+        XCTAssertEqual(annotated.description, expected)
+    }
 }

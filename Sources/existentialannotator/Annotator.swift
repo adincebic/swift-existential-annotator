@@ -26,29 +26,48 @@ final class Annotator: SyntaxRewriter {
 
         let spaceOrEmptyString = isLazy == true ? " " : ""
         let typeWithAnyKeyword = "any \(type)\(spaceOrEmptyString)"
-        let optionalNotation = rawTokens.first { token in
-            token.tokenKind == .postfixQuestionMark || token.tokenKind == .exclamationMark
-        }?.description ?? ""
-        let isOptional = !optionalNotation.isEmpty
+
+        let optionalTypeAttributes = isOptional(tokens: rawTokens)
+        let isOptional = optionalTypeAttributes.isOptional
+        let optionalNotation = optionalTypeAttributes.optionalNotation
+
         var variableDeclarationString: String {
-            if isOptional == true {
+            if isOptional {
                 return node.description.replacingOccurrences(of: ": \(type)\(optionalNotation)", with: ": (\(typeWithAnyKeyword))\(optionalNotation)")
             }
             return node.description.replacingOccurrences(of: ": \(type)\(spaceOrEmptyString)", with: ": \(typeWithAnyKeyword)")
         }
-        print("node")
         return DeclSyntax(stringLiteral: variableDeclarationString)
     }
 
     override func visit(_ node: ParameterClauseSyntax) -> ParameterClauseSyntax {
         let parameters = node.parameterList.map { parameter in
-            if let type = parameter.type?.description, protocols.contains(type.trimmingCharacters(in: .whitespaces)) {
-                return parameter.withUnexpectedBetweenColonAndType(anyToken)
+            guard let type = parameter.type?.description else {
+                return parameter
             }
-            return parameter
+            let typeWithoutOptionalNotation = type.replacingOccurrences(of: "?", with: "")
+                .replacingOccurrences(of: "!", with: "")
+                .trimmingCharacters(in: .whitespaces)
+            guard protocols.contains(typeWithoutOptionalNotation) else {
+                return parameter
+            }
+            let optionalAttributes = isOptional(tokens: parameter.tokens(viewMode: .sourceAccurate))
+            if optionalAttributes.isOptional {
+                return parameter.withType(TypeSyntax(stringLiteral: "(any \(typeWithoutOptionalNotation))\(optionalAttributes.optionalNotation)"))
+            }
+            return parameter.withUnexpectedBetweenColonAndType(anyToken)
         }
         let modifiedParameterList = FunctionParameterListSyntax(parameters)
         let nodeWithModifiedParameterList = node.withParameterList(modifiedParameterList)
         return nodeWithModifiedParameterList
+    }
+
+    private func isOptional(tokens: TokenSequence) -> (isOptional: Bool, optionalNotation: String) {
+        let token = tokens.first(where: {
+            $0.tokenKind == .postfixQuestionMark || $0.tokenKind == .exclamationMark
+        })
+        let notation = token?.description ?? ""
+        let isOptional = !notation.isEmpty
+        return (isOptional: isOptional, optionalNotation: notation)
     }
 }
