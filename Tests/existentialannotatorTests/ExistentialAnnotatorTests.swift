@@ -101,7 +101,7 @@ final class ExistentialAnnotatorTests: XCTestCase {
         XCTAssertEqual(annotated.description, expected)
     }
 
-    func testThatExistentialIsAnnotatedInMoreComplexType() throws {
+    func testThatExistentialIsAnnotatedWhenUsedAsParameterInPresenceOfDefaultArgument() throws {
         let exampleFile = #"""
         final class SurveyViewModel: ObservableObject {
             private var survey: Survey
@@ -130,6 +130,36 @@ final class ExistentialAnnotatorTests: XCTestCase {
                  useCase: any SurveyUseCase = DefaultSurveyUseCase()) {
                 self.survey = survey
                 self.useCase = useCase
+            }
+        }
+        """#
+
+        XCTAssertEqual(annotated.description, expected)
+    }
+
+    func testThatExistentialIsAnnotatedWhenUsedWithLazyProperty() throws {
+        let exampleFile = #"""
+        final class SurveyViewModel: ObservableObject {
+            private lazy var useCase: SurveyUseCase = DefaultSurveyUseCase()
+            @Published var isLoading = false
+
+            init(survey: Survey) {
+                self.survey = survey
+            }
+        }
+        """#
+        let sut = Annotator(protocols: ["SurveyUseCase"])
+        let parsedSource = try SyntaxParser.parse(source: exampleFile)
+
+        let annotated = sut.visit(parsedSource)
+
+        let expected = #"""
+        final class SurveyViewModel: ObservableObject {
+            private lazy var useCase: any SurveyUseCase = DefaultSurveyUseCase()
+            @Published var isLoading = false
+
+            init(survey: Survey) {
+                self.survey = survey
             }
         }
         """#

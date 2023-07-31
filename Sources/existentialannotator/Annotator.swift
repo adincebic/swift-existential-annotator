@@ -14,10 +14,18 @@ final class Annotator: SyntaxRewriter {
         TokenSyntax(.unknown("any"), trailingTrivia: [.spaces(1)], presence: .present)
     }
 
-    override func visit(_ node: TypeAnnotationSyntax) -> TypeAnnotationSyntax {
-        guard protocols.contains(node.type.description) else { return node }
-        let annotatedWithAny = node.withUnexpectedBetweenColonAndType(anyToken)
-        return annotatedWithAny
+    override func visit(_ node: VariableDeclSyntax) -> DeclSyntax {
+        let isLazy = node.modifiers?.tokens(viewMode: .sourceAccurate).contains(where: { token in
+            token.tokenKind == .contextualKeyword("lazy")
+        })
+        let tokens = node.tokens(viewMode: .sourceAccurate).map({$0.description.trimmingCharacters(in: .whitespaces)})
+        guard let type = tokens.first(where: { protocols.contains($0)}) else {
+            return DeclSyntax(node)
+        }
+        let spaceOrEmptyString = isLazy == true ? " " : ""
+        let typeWithAnyKeyword = ": any \(type)\(spaceOrEmptyString)"
+        let variableDeclarationString = node.description.replacingOccurrences(of: ": \(type)\(spaceOrEmptyString)", with: typeWithAnyKeyword)
+        return DeclSyntax(stringLiteral: variableDeclarationString)
     }
 
     override func visit(_ node: ParameterClauseSyntax) -> ParameterClauseSyntax {
