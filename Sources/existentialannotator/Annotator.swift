@@ -18,13 +18,24 @@ final class Annotator: SyntaxRewriter {
         let isLazy = node.modifiers?.tokens(viewMode: .sourceAccurate).contains(where: { token in
             token.tokenKind == .contextualKeyword("lazy")
         })
+
         let tokens = node.tokens(viewMode: .sourceAccurate).map({$0.description.trimmingCharacters(in: .whitespaces)})
         guard let type = tokens.first(where: { protocols.contains($0)}) else {
             return DeclSyntax(node)
         }
+
         let spaceOrEmptyString = isLazy == true ? " " : ""
-        let typeWithAnyKeyword = ": any \(type)\(spaceOrEmptyString)"
-        let variableDeclarationString = node.description.replacingOccurrences(of: ": \(type)\(spaceOrEmptyString)", with: typeWithAnyKeyword)
+        let typeWithAnyKeyword = "any \(type)\(spaceOrEmptyString)"
+        let isOptional = node.tokens(viewMode: .sourceAccurate).contains(where: { token in
+            token.tokenKind == .postfixQuestionMark
+        })
+
+        var variableDeclarationString: String {
+            if isOptional == true {
+                return node.description.replacingOccurrences(of: ": \(type)?", with: ": (\(typeWithAnyKeyword))?")
+            }
+            return node.description.replacingOccurrences(of: ": \(type)\(spaceOrEmptyString)", with: ": \(typeWithAnyKeyword)")
+        }
         return DeclSyntax(stringLiteral: variableDeclarationString)
     }
 
