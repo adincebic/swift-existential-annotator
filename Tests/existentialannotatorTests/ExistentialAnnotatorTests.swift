@@ -198,4 +198,36 @@ final class ExistentialAnnotatorTests: XCTestCase {
 
         XCTAssertEqual(annotated.description, expected)
     }
+
+    func testThatExistentialIsAnnotatedWhenItIsImplicitlyUnwrappedOptional() throws {
+        let exampleFile = #"""
+        final class SurveyViewModel: ObservableObject {
+            private lazy var useCase: SurveyUseCase = DefaultSurveyUseCase()
+            weak var delegate: SurveyDelegate!
+            @Published var isLoading = false
+
+            init(survey: Survey) {
+                self.survey = survey
+            }
+        }
+        """#
+        let sut = Annotator(protocols: ["SurveyUseCase", "SurveyDelegate"])
+        let parsedSource = try SyntaxParser.parse(source: exampleFile)
+
+        let annotated = sut.visit(parsedSource)
+
+        let expected = #"""
+        final class SurveyViewModel: ObservableObject {
+            private lazy var useCase: any SurveyUseCase = DefaultSurveyUseCase()
+            weak var delegate: (any SurveyDelegate)!
+            @Published var isLoading = false
+
+            init(survey: Survey) {
+                self.survey = survey
+            }
+        }
+        """#
+
+        XCTAssertEqual(annotated.description, expected)
+    }
 }

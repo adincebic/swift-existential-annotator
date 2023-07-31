@@ -18,24 +18,25 @@ final class Annotator: SyntaxRewriter {
         let isLazy = node.modifiers?.tokens(viewMode: .sourceAccurate).contains(where: { token in
             token.tokenKind == .contextualKeyword("lazy")
         })
-
-        let tokens = node.tokens(viewMode: .sourceAccurate).map({$0.description.trimmingCharacters(in: .whitespaces)})
+        let rawTokens = node.tokens(viewMode: .sourceAccurate)
+        let tokens = rawTokens.map({$0.description.trimmingCharacters(in: .whitespaces)})
         guard let type = tokens.first(where: { protocols.contains($0)}) else {
             return DeclSyntax(node)
         }
 
         let spaceOrEmptyString = isLazy == true ? " " : ""
         let typeWithAnyKeyword = "any \(type)\(spaceOrEmptyString)"
-        let isOptional = node.tokens(viewMode: .sourceAccurate).contains(where: { token in
-            token.tokenKind == .postfixQuestionMark
-        })
-
+        let optionalNotation = rawTokens.first { token in
+            token.tokenKind == .postfixQuestionMark || token.tokenKind == .exclamationMark
+        }?.description ?? ""
+        let isOptional = !optionalNotation.isEmpty
         var variableDeclarationString: String {
             if isOptional == true {
-                return node.description.replacingOccurrences(of: ": \(type)?", with: ": (\(typeWithAnyKeyword))?")
+                return node.description.replacingOccurrences(of: ": \(type)\(optionalNotation)", with: ": (\(typeWithAnyKeyword))\(optionalNotation)")
             }
             return node.description.replacingOccurrences(of: ": \(type)\(spaceOrEmptyString)", with: ": \(typeWithAnyKeyword)")
         }
+        print("node")
         return DeclSyntax(stringLiteral: variableDeclarationString)
     }
 
