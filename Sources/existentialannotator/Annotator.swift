@@ -70,6 +70,25 @@ final class Annotator: SyntaxRewriter {
         return nodeWithModifiedParameterList
     }
 
+    override func visit(_ node: FunctionCallExprSyntax) -> ExprSyntax {
+        let arguments = node.argumentList.map { argument in
+            let tokens = argument.tokens(viewMode: .sourceAccurate)
+            guard let type = tokens.first(where: { token in
+                let token = token.description.trimmingCharacters(in: .whitespaces)
+                return protocols.contains(token)
+            })?.description else { return argument }
+            if tokens.contains(where: { $0.tokenKind == .asKeyword }) {
+                let expression = argument.expression.description.replacingOccurrences(of: type, with: "any \(type)")
+                let modifiedArgument = argument.withExpression(ExprSyntax(stringLiteral: expression))
+                return modifiedArgument
+            }
+            return argument
+        }
+        let modifiedArguments = TupleExprElementList(arguments)
+        let modifiedNode = node.withArgumentList(modifiedArguments)
+        return ExprSyntax(modifiedNode)
+    }
+
     private func isOptional(tokens: TokenSequence) -> (isOptional: Bool, optionalNotation: String) {
         let token = tokens.first(where: {
             $0.tokenKind == .postfixQuestionMark || $0.tokenKind == .exclamationMark

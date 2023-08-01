@@ -291,7 +291,7 @@ final class ExistentialAnnotatorTests: XCTestCase {
         XCTAssertEqual(annotated.description, expected)
     }
 
-    func testThatExistentialIsAnnotatedWhenCasting() throws {
+    func testThatExistentialIsAnnotatedWhenCastingOnAssignment() throws {
         let exampleFile = #"""
         struct MyType {
             var isSent: Bool {
@@ -325,6 +325,39 @@ final class ExistentialAnnotatorTests: XCTestCase {
         }
         """#
 
+        XCTAssertEqual(annotated.description, expected)
+    }
+
+    func testThatExistentialIsAnnotatedWhenCastingArgumentInMethodCall() throws {
+        let exampleFile = #"""
+        struct MyType {
+            init() {
+                let string = ""
+                open(string as! Survey)
+            }
+
+            func open(_ survey: Survey) {}
+        }
+        """#
+
+        let sut = Annotator(protocols: ["Survey"])
+        let parsedSource = try SyntaxParser.parse(source: exampleFile)
+
+        let annotated = sut.visit(parsedSource)
+
+        let expected = #"""
+        struct MyType {
+            init() {
+                let string = ""
+                open(string as! any Survey)
+            }
+
+            func open(_ survey: any Survey) {}
+        }
+        """#
+
+        print(annotated.description)
+        print(expected)
         XCTAssertEqual(annotated.description, expected)
     }
 }
