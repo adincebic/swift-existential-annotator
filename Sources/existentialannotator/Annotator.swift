@@ -19,11 +19,13 @@ final class Annotator: SyntaxRewriter {
             token.tokenKind == .contextualKeyword("lazy")
         })
         let rawTokens = node.tokens(viewMode: .sourceAccurate)
-        let tokens = rawTokens.map({$0.description.trimmingCharacters(in: .whitespaces)})
-        guard let type = tokens.first(where: { protocols.contains($0)}) else {
+        let tokens = Set(rawTokens.map { $0.description.trimmingCharacters(in: .whitespaces) })
+        guard let type = tokens.first(where: { protocols.contains($0) }) else {
             return DeclSyntax(node)
         }
-
+        if tokens.contains("as") {
+            return addAnyToCastedExistential(type: type, node: node)
+        }
         let spaceOrEmptyString = isLazy == true ? " " : ""
         let typeWithAnyKeyword = "any \(type)\(spaceOrEmptyString)"
 
@@ -38,6 +40,12 @@ final class Annotator: SyntaxRewriter {
             return node.description.replacingOccurrences(of: ": \(type)\(spaceOrEmptyString)", with: ": \(typeWithAnyKeyword)")
         }
         return DeclSyntax(stringLiteral: variableDeclarationString)
+    }
+
+    private func addAnyToCastedExistential(type: String, node: VariableDeclSyntax) -> DeclSyntax {
+        let rawString = node.description
+            .replacingOccurrences(of: type, with: "any \(type)")
+        return DeclSyntax(stringLiteral: rawString)
     }
 
     override func visit(_ node: ParameterClauseSyntax) -> ParameterClauseSyntax {
