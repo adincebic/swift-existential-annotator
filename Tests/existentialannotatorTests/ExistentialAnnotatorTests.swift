@@ -378,4 +378,24 @@ final class ExistentialAnnotatorTests: XCTestCase {
 
         XCTAssertEqual(annotated.description, expected)
     }
+
+    func testThatExistentialsAreAnnotatedWhenUsedForGenericSpecialization() throws {
+        let exampleFile = #"""
+        func controllerDidChangeContent(_: NSFetchedResultsController<NSFetchRequestResult>, _: NSFetchedResultsController<NSFetchRequestResults>) {
+            //
+        }
+        """#
+        let sut = Annotator(protocols: ["NSFetchRequestResult", "NSFetchRequestResults"])
+        let parsedSource = try SyntaxParser.parse(source: exampleFile)
+
+        let annotated = sut.visit(parsedSource)
+
+        let expected = #"""
+        func controllerDidChangeContent(_: NSFetchedResultsController<any NSFetchRequestResult>, _: NSFetchedResultsController<any NSFetchRequestResults>) {
+            //
+        }
+        """#
+
+        XCTAssertEqual(annotated.description, expected)
+    }
 }
