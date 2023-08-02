@@ -429,4 +429,25 @@ final class ExistentialAnnotatorTests: XCTestCase {
 
         XCTAssertEqual(annotated.description, expected)
     }
+
+    func testThatExistentialIsAnnotatedWhenUsedAsReturnType() throws {
+        let exampleFile = #"""
+        func doSomething() -> Codable {
+            return ""
+        }
+        """#
+
+        let sut = Annotator(protocols: ["Codable"])
+        let parsedSource = try SyntaxParser.parse(source: exampleFile)
+
+        let annotated = sut.visit(parsedSource)
+
+        let expected = #"""
+        func doSomething() -> any Codable {
+            return ""
+        }
+        """#
+
+        XCTAssertEqual(annotated.description, expected)
+    }
 }

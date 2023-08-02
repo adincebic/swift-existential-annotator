@@ -53,23 +53,20 @@ final class Annotator: SyntaxRewriter {
             guard let type = parameter.type else {
                 return parameter
             }
-            let typeAsString = type.description
-            let typeWithoutOptionalNotation = typeAsString.replacingOccurrences(of: "?", with: "")
-                .replacingOccurrences(of: "!", with: "")
-                .trimmingCharacters(in: .whitespaces)
+            let typeAsString = type.rawStringRepresentation
 
             if let modifiedGenericClause = addAnyToGenericTypeArgument(type.as(SimpleTypeIdentifierSyntax.self)) {
                 let typeWithModifiedGenerics = SimpleTypeIdentifierSyntax(type)?.withGenericArgumentClause(modifiedGenericClause)
                 return parameter.withType(TypeSyntax(typeWithModifiedGenerics))
             }
 
-            guard protocols.contains(typeWithoutOptionalNotation) else {
+            guard protocols.contains(typeAsString) else {
                 return parameter
             }
 
             let optionalAttributes = isOptional(tokens: parameter.tokens(viewMode: .sourceAccurate))
             if optionalAttributes.isOptional {
-                return parameter.withType(TypeSyntax(stringLiteral: "(any \(typeWithoutOptionalNotation))\(optionalAttributes.optionalNotation)"))
+                return parameter.withType(TypeSyntax(stringLiteral: "(any \(typeAsString))\(optionalAttributes.optionalNotation)"))
             }
             return parameter.withUnexpectedBetweenColonAndType(anyToken)
         }
@@ -85,11 +82,12 @@ final class Annotator: SyntaxRewriter {
         }
         let arguments = genericClause.arguments.map { argument in
             let type = argument.argumentType
-            let typeString = type.description
+            let typeString = type.rawStringRepresentation
             guard protocols.contains(typeString) else {
                 return argument
             }
-            return argument.withArgumentType(TypeSyntax(stringLiteral: "any \(typeString)"))
+            let typeWithAnyKeyword = typeWithExistentialAny(type)
+            return argument.withArgumentType(typeWithAnyKeyword)
         }
         let modifiedArguments = GenericArgumentListSyntax(arguments)
         let modifiedGenericClause = genericClause.withArguments(modifiedArguments)
@@ -120,7 +118,15 @@ final class Annotator: SyntaxRewriter {
             let modifiedReturnType = TypeSyntax(compositionSyntax.withUnexpectedBeforeElements(anyToken))
             return node.withReturnType(modifiedReturnType)
         }
-        return node
+        guard protocols.contains(node.returnType.rawStringRepresentation) else {
+            return node
+        }
+        let currentTypeWithoutAnyKeyword = node.returnType
+        let typeWithAnyKeyword = typeWithExistentialAny(currentTypeWithoutAnyKeyword)
+            .withTrailingTrivia([.spaces(1)])
+
+        let modifiedNode = node.withReturnType(typeWithAnyKeyword)
+        return modifiedNode
     }
 
     private func isOptional(tokens: TokenSequence) -> (isOptional: Bool, optionalNotation: String) {
@@ -130,5 +136,19 @@ final class Annotator: SyntaxRewriter {
         let notation = token?.description ?? ""
         let isOptional = !notation.isEmpty
         return (isOptional: isOptional, optionalNotation: notation)
+    }
+
+    private func typeWithExistentialAny(_ type: TypeSyntax) -> TypeSyntax {
+        let typeWithAny = TypeSyntax(stringLiteral: "any \(type.rawStringRepresentation)")
+        return typeWithAny
+    }
+}
+
+extension TypeSyntax {
+    var rawStringRepresentation: String {
+        let string = description.trimmingCharacters(in: .whitespaces)
+            .replacingOccurrences(of: "?", with: "")
+            .replacingOccurrences(of: "!", with: "")
+        return string
     }
 }
