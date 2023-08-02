@@ -50,24 +50,50 @@ final class Annotator: SyntaxRewriter {
 
     override func visit(_ node: ParameterClauseSyntax) -> ParameterClauseSyntax {
         let parameters = node.parameterList.map { parameter in
-            guard let type = parameter.type?.description else {
+            guard let type = parameter.type else {
                 return parameter
             }
-            let typeWithoutOptionalNotation = type.replacingOccurrences(of: "?", with: "")
+            let typeAsString = type.description
+            let typeWithoutOptionalNotation = typeAsString.replacingOccurrences(of: "?", with: "")
                 .replacingOccurrences(of: "!", with: "")
                 .trimmingCharacters(in: .whitespaces)
+
+            if let modifiedGenericClause = addAnyToGenericTypeArgument(type.as(SimpleTypeIdentifierSyntax.self)) {
+                let typeWithModifiedGenerics = SimpleTypeIdentifierSyntax(type)?.withGenericArgumentClause(modifiedGenericClause)
+                return parameter.withType(TypeSyntax(typeWithModifiedGenerics))
+            }
+
             guard protocols.contains(typeWithoutOptionalNotation) else {
                 return parameter
             }
+
             let optionalAttributes = isOptional(tokens: parameter.tokens(viewMode: .sourceAccurate))
             if optionalAttributes.isOptional {
                 return parameter.withType(TypeSyntax(stringLiteral: "(any \(typeWithoutOptionalNotation))\(optionalAttributes.optionalNotation)"))
             }
             return parameter.withUnexpectedBetweenColonAndType(anyToken)
         }
+
         let modifiedParameterList = FunctionParameterListSyntax(parameters)
         let nodeWithModifiedParameterList = node.withParameterList(modifiedParameterList)
         return nodeWithModifiedParameterList
+    }
+
+    private func addAnyToGenericTypeArgument(_ type: SimpleTypeIdentifierSyntax?) -> GenericArgumentClauseSyntax? {
+        guard let genericClause = type?.genericArgumentClause else {
+            return nil
+        }
+        let arguments = genericClause.arguments.map { argument in
+            let type = argument.argumentType
+            let typeString = type.description
+            guard protocols.contains(typeString) else {
+                return argument
+            }
+            return argument.withArgumentType(TypeSyntax.init(stringLiteral: "any \(typeString)"))
+        }
+        let modifiedArguments = GenericArgumentListSyntax(arguments)
+        let modifiedGenericClause = genericClause.withArguments(modifiedArguments)
+        return modifiedGenericClause
     }
 
     override func visit(_ node: FunctionCallExprSyntax) -> ExprSyntax {
@@ -89,6 +115,18 @@ final class Annotator: SyntaxRewriter {
         return ExprSyntax(modifiedNode)
     }
 
+    override func visit(_ node: GenericArgumentClauseSyntax) -> GenericArgumentClauseSyntax {
+        return node
+    }
+
+    override func visit(_ node: GenericArgumentListSyntax) -> GenericArgumentListSyntax {
+        return node
+    }
+
+    override func visit(_ node: SimpleTypeIdentifierSyntax) -> TypeSyntax {
+        return TypeSyntax(node)
+    }
+
     private func isOptional(tokens: TokenSequence) -> (isOptional: Bool, optionalNotation: String) {
         let token = tokens.first(where: {
             $0.tokenKind == .postfixQuestionMark || $0.tokenKind == .exclamationMark
@@ -98,3 +136,4 @@ final class Annotator: SyntaxRewriter {
         return (isOptional: isOptional, optionalNotation: notation)
     }
 }
+
