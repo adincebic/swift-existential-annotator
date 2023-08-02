@@ -398,4 +398,35 @@ final class ExistentialAnnotatorTests: XCTestCase {
 
         XCTAssertEqual(annotated.description, expected)
     }
+
+    func testThatExistentialIsAnnotatedInProtocolCompositionAsReturnType() throws {
+        let exampleFile = #"""
+        protocol NavigatorProtocol {}
+        protocol OnDataModified {}
+
+        func makeSomething(navigator: NavigatorProtocol, data: Data) -> NavigatorProtocol & OnDataModified {
+            return ""
+        }
+
+        extension String: NavigatorProtocol, OnDataModified {}
+        """#
+
+        let sut = Annotator(protocols: ["OnDataModified", "NavigatorProtocol"])
+        let parsedSource = try SyntaxParser.parse(source: exampleFile)
+
+        let annotated = sut.visit(parsedSource)
+
+        let expected = #"""
+        protocol NavigatorProtocol {}
+        protocol OnDataModified {}
+
+        func makeSomething(navigator: any NavigatorProtocol, data: Data) -> any NavigatorProtocol & OnDataModified {
+            return ""
+        }
+
+        extension String: NavigatorProtocol, OnDataModified {}
+        """#
+
+        XCTAssertEqual(annotated.description, expected)
+    }
 }

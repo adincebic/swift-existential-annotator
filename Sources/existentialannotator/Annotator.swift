@@ -89,7 +89,7 @@ final class Annotator: SyntaxRewriter {
             guard protocols.contains(typeString) else {
                 return argument
             }
-            return argument.withArgumentType(TypeSyntax.init(stringLiteral: "any \(typeString)"))
+            return argument.withArgumentType(TypeSyntax(stringLiteral: "any \(typeString)"))
         }
         let modifiedArguments = GenericArgumentListSyntax(arguments)
         let modifiedGenericClause = genericClause.withArguments(modifiedArguments)
@@ -115,16 +115,12 @@ final class Annotator: SyntaxRewriter {
         return ExprSyntax(modifiedNode)
     }
 
-    override func visit(_ node: GenericArgumentClauseSyntax) -> GenericArgumentClauseSyntax {
+    override func visit(_ node: ReturnClauseSyntax) -> ReturnClauseSyntax {
+        if let compositionSyntax = node.returnType.as(CompositionTypeSyntax.self) {
+            let modifiedReturnType = TypeSyntax(compositionSyntax.withUnexpectedBeforeElements(anyToken))
+            return node.withReturnType(modifiedReturnType)
+        }
         return node
-    }
-
-    override func visit(_ node: GenericArgumentListSyntax) -> GenericArgumentListSyntax {
-        return node
-    }
-
-    override func visit(_ node: SimpleTypeIdentifierSyntax) -> TypeSyntax {
-        return TypeSyntax(node)
     }
 
     private func isOptional(tokens: TokenSequence) -> (isOptional: Bool, optionalNotation: String) {
@@ -136,4 +132,3 @@ final class Annotator: SyntaxRewriter {
         return (isOptional: isOptional, optionalNotation: notation)
     }
 }
-
