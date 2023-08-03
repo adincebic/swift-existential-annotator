@@ -21,7 +21,7 @@ final class Annotator: SyntaxRewriter {
             return DeclSyntax(node)
         }
 
-        if tokens.contains("as") {
+        if node.description.contains("as \(type)") {
             return addAnyToCastedExistential(type: type, node: node)
         }
 
@@ -160,7 +160,6 @@ private extension TypeSyntax {
         return string
     }
 }
-
 
 extension VariableDeclSyntax {
     func typeUsedInArraySyntax(_ type: String) -> Bool {

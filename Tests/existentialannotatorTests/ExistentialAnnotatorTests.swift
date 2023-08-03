@@ -359,6 +359,33 @@ final class ExistentialAnnotatorTests: XCTestCase {
         XCTAssertEqual(annotated.description, expected)
     }
 
+    func testThatSourceIsUntouchedWhenThereIsEnumCaseNamedAsDetectedProtocol() throws {
+        let exampleFile = #"""
+                    static func announce(_ message: String, sender: String) {
+                        let content = NotificationContent(title: nil,
+                                                          message: message as String,
+                                                          category: Messages.Category.FastChat,
+                                                          sender: sender)
+                    }
+        """#
+
+        let sut = Annotator(protocols: ["FastChat"])
+        let parsedSource = try SyntaxParser.parse(source: exampleFile)
+
+        let annotated = sut.visit(parsedSource)
+
+        let expected = #"""
+                    static func announce(_ message: String, sender: String) {
+                        let content = NotificationContent(title: nil,
+                                                          message: message as String,
+                                                          category: Messages.Category.FastChat,
+                                                          sender: sender)
+                    }
+        """#
+
+        XCTAssertEqual(annotated.description, expected)
+    }
+
     func testThatExistentialIsAnnotatedWhenUsedForGenericSpecialization() throws {
         let exampleFile = #"""
         func controllerDidChangeContent(_: NSFetchedResultsController<NSFetchRequestResult>) {
