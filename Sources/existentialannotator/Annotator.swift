@@ -15,36 +15,36 @@ final class Annotator: SyntaxRewriter {
     }
 
     override func visit(_ node: VariableDeclSyntax) -> DeclSyntax {
-        let isLazy = node.modifiers?.tokens(viewMode: .sourceAccurate).contains(where: { token in
-            token.tokenKind == .contextualKeyword("lazy")
-        })
         let rawTokens = node.tokens(viewMode: .sourceAccurate)
         let tokens = Set(rawTokens.map { $0.description.trimmingCharacters(in: .whitespaces) })
         guard let type = tokens.first(where: { protocols.contains($0) }) else {
             return DeclSyntax(node)
         }
+
         if tokens.contains("as") {
             return addAnyToCastedExistential(type: type, node: node)
         }
-        let spaceOrEmptyString = isLazy == true ? " " : ""
-        let typeWithAnyKeyword = "any \(type)\(spaceOrEmptyString)"
 
+        let typeWithAnyKeyword = withExistentialAny(type)
         let optionalTypeAttributes = isOptional(tokens: rawTokens)
         let isOptional = optionalTypeAttributes.isOptional
         let optionalNotation = optionalTypeAttributes.optionalNotation
 
         var variableDeclarationString: String {
+            let colonToken = TokenSyntax(.colon, trailingTrivia: [.spaces(1)], presence: .present).description
             if isOptional {
-                return node.description.replacingOccurrences(of: ": \(type)\(optionalNotation)", with: ": (\(typeWithAnyKeyword))\(optionalNotation)")
+                return node.description.replacingOccurrences(of: "\(colonToken)\(type)\(optionalNotation)", with: "\(colonToken)(\(typeWithAnyKeyword))\(optionalNotation)")
+            } else if node.typeUsedInArraySyntax(type) {
+                return node.description.replacingOccurrences(of: "[\(type)]", with: "[\(withExistentialAny(type))]")
             }
-            return node.description.replacingOccurrences(of: ": \(type)\(spaceOrEmptyString)", with: ": \(typeWithAnyKeyword)")
+            return node.description.replacingOccurrences(of: "\(colonToken)\(type)", with: "\(colonToken)\(typeWithAnyKeyword)")
         }
         return DeclSyntax(stringLiteral: variableDeclarationString)
     }
 
     private func addAnyToCastedExistential(type: String, node: VariableDeclSyntax) -> DeclSyntax {
         let rawString = node.description
-            .replacingOccurrences(of: type, with: "any \(type)")
+            .replacingOccurrences(of: type, with: withExistentialAny(type))
         return DeclSyntax(stringLiteral: rawString)
     }
 
@@ -66,7 +66,11 @@ final class Annotator: SyntaxRewriter {
 
             let optionalAttributes = isOptional(tokens: parameter.tokens(viewMode: .sourceAccurate))
             if optionalAttributes.isOptional {
-                return parameter.withType(TypeSyntax(stringLiteral: "(any \(typeAsString))\(optionalAttributes.optionalNotation)"))
+                let modifiedType = withExistentialAny(type)
+                    .withLeadingTrivia([.unexpectedText("(")])
+                    .withTrailingTrivia([.unexpectedText(")\(optionalAttributes.optionalNotation)")])
+
+                return parameter.withType(modifiedType)
             }
             return parameter.withUnexpectedBetweenColonAndType(anyToken)
         }
@@ -86,7 +90,7 @@ final class Annotator: SyntaxRewriter {
             guard protocols.contains(typeString) else {
                 return argument
             }
-            let typeWithAnyKeyword = typeWithExistentialAny(type)
+            let typeWithAnyKeyword = withExistentialAny(type)
             return argument.withArgumentType(typeWithAnyKeyword)
         }
         let modifiedArguments = GenericArgumentListSyntax(arguments)
@@ -102,7 +106,7 @@ final class Annotator: SyntaxRewriter {
                 return protocols.contains(token)
             })?.description else { return argument }
             if tokens.contains(where: { $0.tokenKind == .asKeyword }) {
-                let expression = argument.expression.description.replacingOccurrences(of: type, with: "any \(type)")
+                let expression = argument.expression.description.replacingOccurrences(of: type, with: withExistentialAny(type))
                 let modifiedArgument = argument.withExpression(ExprSyntax(stringLiteral: expression))
                 return modifiedArgument
             }
@@ -122,7 +126,7 @@ final class Annotator: SyntaxRewriter {
             return node
         }
         let currentTypeWithoutAnyKeyword = node.returnType
-        let typeWithAnyKeyword = typeWithExistentialAny(currentTypeWithoutAnyKeyword)
+        let typeWithAnyKeyword = withExistentialAny(currentTypeWithoutAnyKeyword)
             .withTrailingTrivia([.spaces(1)])
 
         let modifiedNode = node.withReturnType(typeWithAnyKeyword)
@@ -138,17 +142,28 @@ final class Annotator: SyntaxRewriter {
         return (isOptional: isOptional, optionalNotation: notation)
     }
 
-    private func typeWithExistentialAny(_ type: TypeSyntax) -> TypeSyntax {
-        let typeWithAny = TypeSyntax(stringLiteral: "any \(type.rawStringRepresentation)")
+    private func withExistentialAny(_ type: TypeSyntax) -> TypeSyntax {
+        let typeWithAny = TypeSyntax(stringLiteral: withExistentialAny(type.rawStringRepresentation))
         return typeWithAny
+    }
+
+    private func withExistentialAny(_ type: String) -> String {
+        "any \(type)"
     }
 }
 
-extension TypeSyntax {
+private extension TypeSyntax {
     var rawStringRepresentation: String {
         let string = description.trimmingCharacters(in: .whitespaces)
             .replacingOccurrences(of: "?", with: "")
             .replacingOccurrences(of: "!", with: "")
         return string
+    }
+}
+
+
+extension VariableDeclSyntax {
+    func typeUsedInArraySyntax(_ type: String) -> Bool {
+        return description.contains("[\(type)]")
     }
 }
