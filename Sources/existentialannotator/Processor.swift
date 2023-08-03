@@ -11,9 +11,9 @@ final class Processor {
         self.finder = finder
     }
 
-    func processFiles(startingAt topLevelDirectory: URL) throws {
+    func processFiles(startingAt topLevelDirectory: URL, inaccessibleProtocolDeclarations: Set<String>) throws {
         let parsedFiles = try findAllDeclaredProtocols(startingAt: topLevelDirectory)
-        try annotateExistentialTypesWithAny(in: parsedFiles)
+        try annotateExistentialTypesWithAny(in: parsedFiles, inaccessibleProtocolDeclarations: inaccessibleProtocolDeclarations)
     }
 
     private func findAllDeclaredProtocols(startingAt topLevelDirectoryURL: URL) throws -> [URL: SourceFileSyntax] {
@@ -37,8 +37,10 @@ final class Processor {
         return parsedFiles
     }
 
-    private func annotateExistentialTypesWithAny(in parsedFiles: [URL: SourceFileSyntax]) throws {
-        let annotator = Annotator(protocols: finder.protocols)
+    private func annotateExistentialTypesWithAny(in parsedFiles: [URL: SourceFileSyntax], inaccessibleProtocolDeclarations: Set<String>) throws {
+        var protocols = inaccessibleProtocolDeclarations
+        protocols.formUnion(finder.protocols)
+        let annotator = Annotator(protocols: protocols)
         var annotationCounter = 0
 
         for (fileURL, file) in parsedFiles {
