@@ -44,7 +44,7 @@ final class Annotator: SyntaxRewriter {
 
     private func addAnyToCastedExistential(type: String, node: VariableDeclSyntax) -> DeclSyntax {
         let rawString = node.description
-            .replacingOccurrences(of: type, with: withExistentialAny(type))
+            .replacingOccurrences(of: " \(type)", with: " \(withExistentialAny(type))")
         return DeclSyntax(stringLiteral: rawString)
     }
 

@@ -386,6 +386,39 @@ final class ExistentialAnnotatorTests: XCTestCase {
         XCTAssertEqual(annotated.description, expected)
     }
 
+    func testThatSourceIsUntouchedWhenMethodNameContainsProtocolName() throws {
+        let exampleFile = #"""
+            static var expirationDate: Date? {
+                set {
+                    guard let expirationDate = newValue else { return }
+                    setNSCoding(value: expirationDate as NSCoding, forKey: "expirationDate")
+                }
+                get {
+                    getNSCoding("expirationDate") as? Date
+                }
+            }
+        """#
+
+        let sut = Annotator(protocols: ["NSCoding"])
+        let parsedSource = try SyntaxParser.parse(source: exampleFile)
+
+        let annotated = sut.visit(parsedSource)
+
+        let expected = #"""
+            static var expirationDate: Date? {
+                set {
+                    guard let expirationDate = newValue else { return }
+                    setNSCoding(value: expirationDate as any NSCoding, forKey: "expirationDate")
+                }
+                get {
+                    getNSCoding("expirationDate") as? Date
+                }
+            }
+        """#
+
+        XCTAssertEqual(annotated.description, expected)
+    }
+
     func testThatExistentialIsAnnotatedWhenUsedForGenericSpecialization() throws {
         let exampleFile = #"""
         func controllerDidChangeContent(_: NSFetchedResultsController<NSFetchRequestResult>) {
