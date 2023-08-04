@@ -126,17 +126,22 @@ final class Annotator: SyntaxRewriter {
             return node
         }
         let currentTypeWithoutAnyKeyword = node.returnType
-        let typeWithAnyKeyword = withExistentialAny(currentTypeWithoutAnyKeyword)
-            .withTrailingTrivia([.spaces(1)])
+
+        var typeWithAnyKeyword: TypeSyntax {
+            if let lastToken = currentTypeWithoutAnyKeyword.lastToken, lastToken.isOptionalNotation {
+                let typeString = "(\(withExistentialAny(currentTypeWithoutAnyKeyword.rawStringRepresentation)))\(lastToken.description)"
+                return TypeSyntax(stringLiteral: typeString)
+            }
+            return withExistentialAny(currentTypeWithoutAnyKeyword)
+                .withTrailingTrivia([.spaces(1)])
+        }
 
         let modifiedNode = node.withReturnType(typeWithAnyKeyword)
         return modifiedNode
     }
 
     private func isOptional(tokens: TokenSequence) -> (isOptional: Bool, optionalNotation: String) {
-        let token = tokens.first(where: {
-            $0.tokenKind == .postfixQuestionMark || $0.tokenKind == .exclamationMark
-        })
+        let token = tokens.first(where: { $0.isOptionalNotation })
         let notation = token?.description ?? ""
         let isOptional = !notation.isEmpty
         return (isOptional: isOptional, optionalNotation: notation)
@@ -164,5 +169,11 @@ private extension TypeSyntax {
 extension VariableDeclSyntax {
     func typeUsedInArraySyntax(_ type: String) -> Bool {
         return description.contains("[\(type)]")
+    }
+}
+
+private extension TokenSyntax {
+    var isOptionalNotation: Bool {
+        tokenKind == .postfixQuestionMark || tokenKind == .exclamationMark
     }
 }
